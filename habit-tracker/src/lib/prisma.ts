@@ -1,22 +1,4 @@
-import path from "node:path";
 import { PrismaClient } from "@/generated/prisma";
-
-const normalizeDatabaseUrl = () => {
-  const url = process.env.DATABASE_URL;
-  if (!url || !url.startsWith("file:")) {
-    return;
-  }
-
-  const filePath = url.replace("file:", "");
-  if (filePath.startsWith("/")) {
-    return;
-  }
-
-  const absolutePath = path.resolve(process.cwd(), filePath);
-  process.env.DATABASE_URL = `file:${absolutePath}`;
-};
-
-normalizeDatabaseUrl();
 
 declare global {
   var prisma: PrismaClient | undefined;
@@ -27,8 +9,14 @@ const createClient = () =>
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 
-export const prisma = global.prisma ?? createClient();
+export const getPrismaClient = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is not set. Provide a PostgreSQL connection string.");
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
-}
+  if (!global.prisma) {
+    global.prisma = createClient();
+  }
+
+  return global.prisma;
+};

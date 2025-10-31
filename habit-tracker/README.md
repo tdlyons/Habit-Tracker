@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Habit Tracker
 
-## Getting Started
+A multi-tenant habit tracking dashboard built with Next.js 16, Prisma, and Tailwind CSS. Each browser session receives an isolated workspace so multiple users can track progress independently when the app is deployed.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js 20+
+- npm 10+
+- A PostgreSQL database (local Docker container, managed service, etc.)
+
+## Environment variables
+
+Create a `.env` file based on the following template:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
+# Optional: values used by the seed script
+SEED_USER_ID="demo-user-id"
+SEED_USER_NAME="Demo User"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`DATABASE_URL` must point to a writable PostgreSQL database. The schema is managed through Prisma migrations.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install dependencies
 
-## Learn More
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Apply database migrations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   npm run db:migrate
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. (Optional) Seed the database with sample data
 
-## Deploy on Vercel
+   ```bash
+   npm run db:seed
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. Start the development server
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npm run dev
+   ```
+
+The application is available at [http://localhost:3000](http://localhost:3000). Every new browser session receives a secure cookie that maps to a dedicated user record in the database.
+
+## Build and quality checks
+
+```bash
+npm run lint
+npm run build
+```
+
+These commands should be executed in CI/CD pipelines before deploying to production.
+
+## Operational runbooks
+
+Operational guidance—including deployment steps, seeding instructions, environment documentation, and health checks—is maintained in [`docs/deployment.md`](docs/deployment.md).
+
+## Additional resources
+
+- [Next.js documentation](https://nextjs.org/docs)
+- [Prisma documentation](https://www.prisma.io/docs)

@@ -1,10 +1,12 @@
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { getDashboardData, serializeDashboard } from "@/lib/habit-service";
+import { getCurrentUserId } from "@/lib/user-session";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const dashboard = await getDashboardData();
+  const userId = await getCurrentUserId();
+  const dashboard = await getDashboardData(userId);
   const initialData = serializeDashboard(dashboard);
 
   return (

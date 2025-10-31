@@ -1,8 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import { getPrismaClient } from "@/lib/prisma";
 
 const DAY_IN_MS = 86_400_000;
 const DEFAULT_HISTORY_DAYS = 14;
-const DEFAULT_USER_ID = "default-user";
 
 export type HabitHistoryPoint = {
   date: string;
@@ -58,16 +57,6 @@ const toUTCDate = (input: Date | string) => {
 };
 
 const toISODate = (date: Date) => date.toISOString().slice(0, 10);
-
-const ensureDefaultUser = async () => {
-  const user = await prisma.user.upsert({
-    where: { id: DEFAULT_USER_ID },
-    update: {},
-    create: { id: DEFAULT_USER_ID, name: "You" },
-  });
-
-  return user.id;
-};
 
 const computeHabitAnalytics = (params: {
   entries: { entryDate: Date }[];
@@ -142,7 +131,20 @@ const computeHabitAnalytics = (params: {
   };
 };
 
-export const getDashboardData = async (): Promise<DashboardData> => {
+const ensureUser = async (userId: string) => {
+  const prisma = getPrismaClient();
+  const user = await prisma.user.upsert({
+    where: { id: userId },
+    update: { updatedAt: new Date() },
+    create: { id: userId },
+  });
+
+  return user.id;
+};
+
+export const getDashboardData = async (userId: string): Promise<DashboardData> => {
+  const resolvedUserId = await ensureUser(userId);
+  const prisma = getPrismaClient();
   const today = toUTCDate(new Date());
   const historyWindowStart = new Date(today);
   historyWindowStart.setUTCDate(historyWindowStart.getUTCDate() - DEFAULT_HISTORY_DAYS * 2);
@@ -150,6 +152,7 @@ export const getDashboardData = async (): Promise<DashboardData> => {
   const habits = await prisma.habit.findMany({
     where: {
       archived: false,
+      userId: resolvedUserId,
     },
     include: {
       entries: {
@@ -239,12 +242,13 @@ export const getDashboardData = async (): Promise<DashboardData> => {
   };
 };
 
-export const createHabit = async (input: CreateHabitInput) => {
+export const createHabit = async (userId: string, input: CreateHabitInput) => {
   if (!input.name || !input.name.trim()) {
     throw new Error("Habit name is required.");
   }
 
-  const userId = await ensureDefaultUser();
+  const prisma = getPrismaClient();
+  await ensureUser(userId);
 
   await prisma.habit.create({
     data: {
@@ -257,16 +261,17 @@ export const createHabit = async (input: CreateHabitInput) => {
     },
   });
 
-  return getDashboardData();
+  return getDashboardData(userId);
 };
 
-export const toggleHabitEntry = async (habitId: string, dateISO?: string) => {
+export const toggleHabitEntry = async (userId: string, habitId: string, dateISO?: string) => {
+  const prisma = getPrismaClient();
   const habit = await prisma.habit.findUnique({
     where: { id: habitId },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
 
-  if (!habit) {
+  if (!habit || habit.userId !== userId) {
     throw new Error("Habit not found.");
   }
 
@@ -293,16 +298,26 @@ export const toggleHabitEntry = async (habitId: string, dateISO?: string) => {
     });
   }
 
-  return getDashboardData();
+  return getDashboardData(userId);
 };
 
-export const archiveHabit = async (habitId: string, archived = true) => {
+export const archiveHabit = async (userId: string, habitId: string, archived = true) => {
+  const prisma = getPrismaClient();
+  const habit = await prisma.habit.findUnique({
+    where: { id: habitId },
+    select: { id: true, userId: true },
+  });
+
+  if (!habit || habit.userId !== userId) {
+    throw new Error("Habit not found.");
+  }
+
   await prisma.habit.update({
     where: { id: habitId },
     data: { archived },
   });
 
-  return getDashboardData();
+  return getDashboardData(userId);
 };
 
 export type SerializedDashboardData = {
