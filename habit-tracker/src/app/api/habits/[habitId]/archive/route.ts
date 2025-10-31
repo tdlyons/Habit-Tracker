@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { archiveHabit, serializeDashboard } from "@/lib/habit-service";
+import { getCurrentUserId } from "@/lib/user-session";
 
 export async function POST(
   request: Request,
-  { params }: { params: { habitId: string } },
+  { params }: { params: Promise<{ habitId: string }> },
 ) {
   try {
-    const { habitId } = params;
+    const { habitId } = await params;
     const payload = await request.json().catch(() => ({}));
-    const dashboard = await archiveHabit(habitId, Boolean(payload?.archived));
+    const userId = await getCurrentUserId();
+    const dashboard = await archiveHabit(userId, habitId, Boolean(payload?.archived));
 
     return NextResponse.json(serializeDashboard(dashboard));
   } catch (error) {
